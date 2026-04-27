@@ -40,6 +40,8 @@ public static class NmGraphAgConverter
         ["CNmGraphDocTransitionNode"] = "EE::Animation::TransitionToolsNode",
         ["CNmGraphDocClipNode"] = "EE::Animation::AnimationClipToolsNode",
         ["CNmGraphDocClipNode::CData"] = "EE::Animation::AnimationClipToolsNode::Data",
+        ["CNmGraphDocAnimationPoseNode"] = "EE::Animation::AnimationPoseToolsNode",
+        ["CNmGraphDocAnimationPoseNode::CData"] = "EE::Animation::AnimationPoseToolsNode::Data",
         ["CNmGraphDocBlend1DNode"] = "EE::Animation::Blend1DToolsNode",
         ["CNmGraphDocBlend2DNode"] = "EE::Animation::Blend2DToolsNode",
         ["CNmGraphDocSelectorNode"] = "EE::Animation::SelectorToolsNode",
@@ -67,13 +69,22 @@ public static class NmGraphAgConverter
         ["CNmGraphDocFloatComparisonNode"] = "EE::Animation::FloatComparisonToolsNode",
         ["CNmGraphDocFloatRangeComparisonNode"] = "EE::Animation::FloatRangeComparisonToolsNode",
         ["CNmGraphDocIDComparisonNode"] = "EE::Animation::IDComparisonToolsNode",
+        ["CNmGraphDocOrNode"] = "EE::Animation::OrToolsNode",
+        ["CNmGraphDocAndNode"] = "EE::Animation::AndToolsNode",
         ["CNmGraphDocNotNode"] = "EE::Animation::NotToolsNode",
         ["CNmGraphDocIDEventConditionNode"] = "EE::Animation::IDEventConditionToolsNode",
+        ["CNmGraphDocGraphEventConditionNode"] = "EE::Animation::GraphEventConditionToolsNode",
+        ["CNmGraphDocIDToFloatNode"] = "EE::Animation::IDToFloatToolsNode",
         ["CNmGraphDocStateCompletedConditionNode"] = "EE::Animation::StateCompletedConditionToolsNode",
         ["CNmGraphDocTwoBoneIKNode"] = "EE::Animation::TwoBoneIKToolsNode",
         ["CnmGraphDocConstBoneTargetNode"] = "EE::Animation::ConstBoneTargetToolsNode",
         ["CNmGraphDocConstBoneTargetNode"] = "EE::Animation::ConstBoneTargetToolsNode",
         ["CNmGraphDocConstTargetNode"] = "EE::Animation::ConstTargetToolsNode",
+        ["CNmGraphDocBoneMaskNode"] = "EE::Animation::BoneMaskToolsNode",
+        ["CnmGraphDocConstFloatNode"] = "EE::Animation::ConstFloatToolsNode",
+        ["CNmGraphDocCachedFloatNode"] = "EE::Animation::CachedFloatToolsNode",
+        ["CnmGraphDocDurationScaleNode"] = "EE::Animation::DurationScaleToolsNode",
+        ["CNmGraphDocLayerBlendNode"] = "EE::Animation::LayerBlendToolsNode",
         ["CNmGraphDocReferencedGraphNode"] = "EE::Animation::ReferencedGraphToolsNode",
     };
 
@@ -94,10 +105,16 @@ public static class NmGraphAgConverter
         ["m_bAllowLooping"] = "m_allowLooping",
         ["m_values"] = "m_IDs",
         ["m_flSpeedMultiplier"] = "m_speedMultiplier",
+        ["m_flDesiredDuration"] = "m_desiredDuration",
+        ["m_flValue"] = "m_value",
         ["m_nStartSyncEventOffset"] = "m_startSyncEventOffset",
         ["m_clip"] = "m_animClip",
         ["m_flBegin"] = "m_begin",
         ["m_flEnd"] = "m_end",
+        ["m_flMin"] = "m_begin",
+        ["m_flMax"] = "m_end",
+        ["m_bLimitSearchToSourceState"] = "m_limitSearchToSourceState",
+        ["m_bIgnoreInactiveBranchEvents"] = "m_ignoreInactiveBranchEvents",
         ["m_bSwitchDynamically"] = "m_switchDynamically",
         ["m_flBlendTimeSeconds"] = "m_blendTime",
     };
@@ -424,6 +441,12 @@ public static class NmGraphAgConverter
                 continue;
             }
 
+            if (ShouldPreserveValvePropertyAsCommentOnly(originalClassName, property.Key))
+            {
+                type.Add(CreatePreservedValvePropertyComment(property.Key, property.Value));
+                continue;
+            }
+
             if (property.Key == "m_graphType" && typeId == "EE::Animation::StateMachineGraph")
             {
                 continue;
@@ -435,6 +458,10 @@ public static class NmGraphAgConverter
                 type.Add(childElement);
 
                 if (property.Key == "m_graphType" && NeedsOriginalGraphTypePreservation(property.Value.ToString()))
+                {
+                    type.Add(CreatePreservedValvePropertyComment(property.Key, property.Value));
+                }
+                else if (ShouldPreserveOriginalValvePropertyValue(property.Key))
                 {
                     type.Add(CreatePreservedValvePropertyComment(property.Key, property.Value));
                 }
@@ -677,6 +704,11 @@ public static class NmGraphAgConverter
             return true;
         }
 
+        if (originalPropertyName == "m_curve" && TryConvertValveFloatCurveToAgProperty(mappedPropertyName, value, out scalarElement))
+        {
+            return true;
+        }
+
         if (value.ValueType is KVValueType.Collection or KVValueType.Array or KVValueType.Null)
         {
             return false;
@@ -710,6 +742,24 @@ public static class NmGraphAgConverter
         }
 
         scalarElement = CreateAgProperty(mappedPropertyName, $"{FormatAgFloatingPoint(min)}{','}{FormatAgFloatingPoint(max)}");
+        return true;
+    }
+
+    private static bool TryConvertValveFloatCurveToAgProperty(string mappedPropertyName, KVObject value, out XElement scalarElement)
+    {
+        scalarElement = null!;
+
+        if (mappedPropertyName != "m_curve" || value.ValueType != KVValueType.Collection)
+        {
+            return false;
+        }
+
+        if (!TryFormatValveFloatCurve(value, out var curveString))
+        {
+            return false;
+        }
+
+        scalarElement = CreateAgProperty(mappedPropertyName, curveString);
         return true;
     }
 
@@ -747,7 +797,7 @@ public static class NmGraphAgConverter
         => propertyName is "m_position" or "m_viewOffset" or "m_canvasPosition";
 
     private static bool IsFloatRangeProperty(string propertyName)
-        => propertyName is "m_inputTimeRemapRange" or "m_clampRange";
+        => propertyName is "m_inputTimeRemapRange" or "m_clampRange" or "m_range";
 
     private static bool TryReadValveRange(KVObject value, out string min, out string max)
     {
@@ -774,6 +824,11 @@ public static class NmGraphAgConverter
         if (IsFloatRangeProperty(propertyName))
         {
             return ParseValveFloatRange(value);
+        }
+
+        if (propertyName == "m_curve")
+        {
+            return ParseValveFloatCurve(value);
         }
 
         if (propertyName == "m_type")
@@ -847,6 +902,126 @@ public static class NmGraphAgConverter
         range.Add("m_flMax", values.Length > 1 ? ParseAgScalar(values[1]) : 0.0f);
         return range;
     }
+
+    private static KVObject ParseValveFloatCurve(string value)
+    {
+        var parts = value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0 || !int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var numPoints) || numPoints < 0)
+        {
+            return KVObject.Collection();
+        }
+
+        var spline = KVObject.Array();
+        var tangents = KVObject.Array();
+        var minX = float.PositiveInfinity;
+        var minY = float.PositiveInfinity;
+        var maxX = float.NegativeInfinity;
+        var maxY = float.NegativeInfinity;
+
+        var cursor = 1;
+        for (var i = 0; i < numPoints; i++)
+        {
+            var x = cursor < parts.Length ? ParseAgScalar(parts[cursor++]) : 0.0f;
+            var y = cursor < parts.Length ? ParseAgScalar(parts[cursor++]) : 0.0f;
+            var inTangent = cursor < parts.Length ? ParseAgScalar(parts[cursor++]) : 1.0f;
+            var outTangent = cursor < parts.Length ? ParseAgScalar(parts[cursor++]) : 1.0f;
+            var tangentMode = cursor < parts.Length ? parts[cursor++] : "0";
+
+            spline.Add(KVObject.Collection([
+                new KeyValuePair<string, KVObject>("x", x),
+                new KeyValuePair<string, KVObject>("y", y),
+                new KeyValuePair<string, KVObject>("m_flSlopeIncoming", inTangent),
+                new KeyValuePair<string, KVObject>("m_flSlopeOutgoing", outTangent),
+            ]));
+
+            var valveTangentMode = MapAgCurveTangentModeToValve(tangentMode);
+            tangents.Add(KVObject.Collection([
+                new KeyValuePair<string, KVObject>("m_nIncomingTangent", valveTangentMode),
+                new KeyValuePair<string, KVObject>("m_nOutgoingTangent", valveTangentMode),
+            ]));
+
+            if (float.TryParse(x.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var xFloat))
+            {
+                minX = Math.Min(minX, xFloat);
+                maxX = Math.Max(maxX, xFloat);
+            }
+
+            if (float.TryParse(y.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var yFloat))
+            {
+                minY = Math.Min(minY, yFloat);
+                maxY = Math.Max(maxY, yFloat);
+            }
+        }
+
+        if (float.IsPositiveInfinity(minX))
+        {
+            minX = minY = maxX = maxY = 0.0f;
+        }
+
+        return KVObject.Collection([
+            new KeyValuePair<string, KVObject>("m_spline", spline),
+            new KeyValuePair<string, KVObject>("m_tangents", tangents),
+            new KeyValuePair<string, KVObject>("m_vDomainMins", KVObject.Array([minX, minY])),
+            new KeyValuePair<string, KVObject>("m_vDomainMaxs", KVObject.Array([maxX, maxY])),
+        ]);
+    }
+
+    private static bool TryFormatValveFloatCurve(KVObject value, out string curveString)
+    {
+        curveString = string.Empty;
+
+        if (!value.TryGetValue("m_spline", out var spline) || !spline.IsArray)
+        {
+            return false;
+        }
+
+        value.TryGetValue("m_tangents", out var tangents);
+
+        var segments = new List<string>(1 + spline.Count * 5) { spline.Count.ToString(CultureInfo.InvariantCulture) };
+
+        for (var i = 0; i < spline.Count; i++)
+        {
+            if (spline[i].ValueType != KVValueType.Collection)
+            {
+                return false;
+            }
+
+            var point = spline[i];
+            segments.Add(FormatAgScalar(point["x"]));
+            segments.Add(FormatAgScalar(point["y"]));
+            segments.Add(FormatAgScalar(point["m_flSlopeIncoming"]));
+            segments.Add(FormatAgScalar(point["m_flSlopeOutgoing"]));
+
+            var tangentMode = "0";
+            if (tangents is not null && tangents.IsArray && i < tangents.Count && tangents[i].ValueType == KVValueType.Collection)
+            {
+                tangentMode = MapValveCurveTangentModeToAg(tangents[i]);
+            }
+
+            segments.Add(tangentMode);
+        }
+
+        curveString = string.Join(",", segments);
+        return true;
+    }
+
+    private static string MapValveCurveTangentModeToAg(KVObject tangentValue)
+    {
+        var incoming = tangentValue.TryGetValue("m_nIncomingTangent", out var incomingValue) ? incomingValue.ToString() : string.Empty;
+        var outgoing = tangentValue.TryGetValue("m_nOutgoingTangent", out var outgoingValue) ? outgoingValue.ToString() : string.Empty;
+
+        return incoming == "CURVE_TANGENT_FREE" || outgoing == "CURVE_TANGENT_FREE" ? "0" : "1";
+    }
+
+    private static string MapAgCurveTangentModeToValve(string tangentMode)
+        => tangentMode == "0" ? "CURVE_TANGENT_FREE" : "CURVE_TANGENT_SPLINE";
+
+    private static bool ShouldPreserveValvePropertyAsCommentOnly(string? originalClassName, string propertyName)
+        => string.Equals(originalClassName, "CNmGraphDocBoneMaskNode", StringComparison.Ordinal)
+            && propertyName is "m_pDefaultVariationData" or "m_overrides" or "m_defaultResourceName";
+
+    private static bool ShouldPreserveOriginalValvePropertyValue(string propertyName)
+        => propertyName == "m_curve";
 
     private static string FormatAgScalar(KVObject value, string? propertyName = null)
     {
@@ -1076,6 +1251,7 @@ public static class NmGraphAgConverter
             "m_variationHierarchy" => "EE::Animation::VariationHierarchy",
             "m_defaultVariationData" => GuessVariationDataType(value),
             "m_variationData" => GuessVariationDataType(value),
+            "m_inputTimeRemapRange" or "m_clampRange" => "EE::FloatRange",
             "m_inputRange" or "m_outputRange" => "EE::Animation::FloatRemapNode::RemapRange",
             _ => null,
         };
@@ -1095,6 +1271,8 @@ public static class NmGraphAgConverter
             "m_inputPins" or "m_outputPins" => "EE::NodeGraph::Pin",
             "m_variations" => "EE::Animation::Variation",
             "m_overrides" => "EE::Animation::VariationDataToolsNode::OverrideValue",
+            "m_conditions" => "EE::Animation::GraphEventConditionToolsNode::Condition",
+            "m_mappings" => "EE::Animation::IDToFloatToolsNode::Mapping",
             "m_timeRemainingEvents" or "m_timeElapsedEvents" => "EE::Animation::StateToolsNode::TimedStateEvent",
             _ => null,
         };

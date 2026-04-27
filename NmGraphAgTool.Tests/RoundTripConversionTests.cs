@@ -1,4 +1,5 @@
 using System.Text;
+using System.Xml.Linq;
 using NmGraphAgTool;
 using ValveKeyValue;
 using Xunit;
@@ -41,6 +42,128 @@ public sealed class RoundTripConversionTests
         }
 
         Assert.True(failures.Count == 0, string.Join($"{Environment.NewLine}{Environment.NewLine}", failures));
+    }
+
+    [Fact]
+    public void AllVnmGraphFiles_DoNotSerializeUnknownToolsTypes()
+    {
+        var sourceDirectory = ResolveSourceDirectory();
+        var files = Directory.EnumerateFiles(sourceDirectory, "*.vnmgraph", SearchOption.AllDirectories)
+            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        Assert.NotEmpty(files);
+
+        var failures = new List<string>();
+
+        foreach (var file in files)
+        {
+            var source = File.ReadAllText(file);
+            var ag = NmGraphAgConverter.ConvertVnmGraphToAg(source);
+
+            if (ag.Contains("UnknownToolsType", StringComparison.Ordinal))
+            {
+                failures.Add(file);
+            }
+        }
+
+        Assert.True(failures.Count == 0,
+            "UnknownToolsType was emitted for:" + Environment.NewLine + string.Join(Environment.NewLine, failures));
+    }
+
+    [Fact]
+    public void ValveRangeProperties_AreSerializedWithConcreteAgTypes()
+    {
+        const string source = """
+                              <!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+                              {
+                              	_class = "CNmGraphDocument"
+                              	m_nVersion = 0
+                              	m_pRootGraph =
+                              	{
+                              		_class = "CNmGraphDocFlowGraph"
+                              		m_ID = "00000000-0000-0000-0000-000000000001"
+                              		m_nodes =
+                              		[
+                              			{
+                              				_class = "CNmGraphDocAnimationPoseNode"
+                              				m_ID = "00000000-0000-0000-0000-000000000002"
+                              				m_name = "Pose"
+                              				m_floatingComment = ""
+                              				m_position = [ 0.0, 0.0 ]
+                              				m_inputPins = [  ]
+                              				m_outputPins = [  ]
+                              				m_pDefaultVariationData =
+                              				{
+                              					_class = "CNmGraphDocAnimationPoseNode::CData"
+                              					m_clip = ""
+                              					m_variationTimeValue = -1.0
+                              				}
+                              				m_overrides = [  ]
+                              				m_defaultResourceName = ""
+                              				m_inputTimeRemapRange =
+                              				{
+                              					m_flMin = 1.0
+                              					m_flMax = 2.0
+                              				}
+                              				m_fixedTimeValue = 0.0
+                              				m_useFramesAsInput = false
+                              			},
+                              			{
+                              				_class = "CNmGraphDocFloatRemapNode"
+                              				m_ID = "00000000-0000-0000-0000-000000000003"
+                              				m_name = "Remap"
+                              				m_floatingComment = ""
+                              				m_position = [ 0.0, 0.0 ]
+                              				m_inputPins = [  ]
+                              				m_outputPins = [  ]
+                              				m_inputRange =
+                              				{
+                              					m_flMin = 3.0
+                              					m_flMax = 4.0
+                              				}
+                              				m_outputRange =
+                              				{
+                              					m_flMin = 5.0
+                              					m_flMax = 6.0
+                              				}
+                              			},
+                              		]
+                              		m_graphType = "BlendTree"
+                              		m_viewOffset = [ 0.0, 0.0 ]
+                              		m_connections = [  ]
+                              	}
+                              	m_variationHierarchy =
+                              	{
+                              		m_variations = [  ]
+                              	}
+                              }
+                              """;
+
+        var ag = NmGraphAgConverter.ConvertVnmGraphToAg(source);
+        var document = XDocument.Parse(ag);
+
+        var rangeProperty = document.Descendants("Property")
+            .FirstOrDefault(x => (string?) x.Attribute("ID") == "m_inputTimeRemapRange");
+
+        Assert.NotNull(rangeProperty);
+        Assert.Equal("1.0,2.0", (string?) rangeProperty!.Attribute("Value"));
+        Assert.Empty(rangeProperty.Elements());
+        Assert.DoesNotContain(document.Descendants("Type"),
+            x => (string?) x.Attribute("TypeID") == "EE::Animation::UnknownToolsType");
+
+        var remapRangeTypes = document.Descendants("Type")
+            .Where(x => (string?) x.Attribute("TypeID") == "EE::Animation::FloatRemapNode::RemapRange")
+            .ToArray();
+
+        Assert.Equal(2, remapRangeTypes.Length);
+        Assert.All(remapRangeTypes, type =>
+        {
+            Assert.DoesNotContain(type.Elements("Property"),
+                x => (string?) x.Attribute("ID") is "m_flMin" or "m_flMax");
+            Assert.Contains(type.Elements("Property"), x => (string?) x.Attribute("ID") == "m_begin");
+            Assert.Contains(type.Elements("Property"), x => (string?) x.Attribute("ID") == "m_end");
+        });
     }
 
     private static string ResolveSourceDirectory()
