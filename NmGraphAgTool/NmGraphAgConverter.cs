@@ -144,7 +144,7 @@ public static class NmGraphAgConverter
     public static string ConvertVnmGraphToAg(string input)
     {
         var document = KV3Helpers.ParseKV3(new MemoryStream(Encoding.UTF8.GetBytes(input)));
-        return ConvertVnmGraphToAg(document).ToString(SaveOptions.DisableFormatting);
+        return ConvertVnmGraphToAg(document).ToString();
     }
 
     public static XDocument ConvertVnmGraphToAg(KVDocument document)
@@ -229,6 +229,7 @@ public static class NmGraphAgConverter
             }
         }
     }
+
 
     public static string ConvertAgToVnmGraph(string input)
     {
