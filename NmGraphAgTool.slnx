@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="NmGraphAgTool/NmGraphAgTool.csproj" />
+  <Project Path="NmGraphAgTool.Tests/NmGraphAgTool.Tests.csproj" />
+</Solution>
