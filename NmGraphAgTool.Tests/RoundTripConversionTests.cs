@@ -166,6 +166,248 @@ public sealed class RoundTripConversionTests
         });
     }
 
+    [Fact]
+    public void ReferencedGraphVariationPaths_AreConvertedToEsotericaGraphResourceIds_AndBack()
+    {
+        const string source = """
+                              <!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+                              {
+                              	_class = "CNmGraphDocument"
+                              	m_nVersion = 0
+                              	m_pRootGraph =
+                              	{
+                              		_class = "CNmGraphDocFlowGraph"
+                              		m_ID = "00000000-0000-0000-0000-000000000001"
+                              		m_nodes =
+                              		[
+                              			{
+                              				_class = "CNmGraphDocReferencedGraphNode"
+                              				m_ID = "00000000-0000-0000-0000-000000000002"
+                              				m_name = "Child Graph"
+                              				m_floatingComment = ""
+                              				m_position = [ 0.0, 0.0 ]
+                              				m_inputPins = [  ]
+                              				m_outputPins = [  ]
+                              				m_pDefaultVariationData =
+                              				{
+                              					_class = "CNmGraphDocReferencedGraphNode::CData"
+                              					m_variation = "animation/graphs/viewmodel/viewmodel_inspects.vnmgraph+p90.vnmgraph"
+                              				}
+                              				m_overrides = [  ]
+                              				m_defaultResourceName = ""
+                              			},
+                              		]
+                              		m_graphType = "BlendTree"
+                              		m_viewOffset = [ 0.0, 0.0 ]
+                              		m_connections = [  ]
+                              	}
+                              	m_variationHierarchy =
+                              	{
+                              		m_variations = [  ]
+                              	}
+                              }
+                              """;
+
+        var ag = NmGraphAgConverter.ConvertVnmGraphToAg(source);
+        var document = XDocument.Parse(ag);
+
+        var graphDefinitionProperty = document.Descendants("Property")
+            .FirstOrDefault(x => (string?) x.Attribute("ID") == "m_graphDefinition");
+
+        Assert.NotNull(graphDefinitionProperty);
+        Assert.Equal("data://animation/graphs/viewmodel/viewmodel_inspects.ag/p90.ag", (string?) graphDefinitionProperty!.Attribute("Value"));
+
+        var roundTripped = NmGraphAgConverter.ConvertAgToVnmGraph(ag);
+        var reparsed = ParseKv3(roundTripped);
+
+        Assert.Equal(
+            "animation/graphs/viewmodel/viewmodel_inspects.vnmgraph+p90.vnmgraph",
+            reparsed["m_pRootGraph"]["m_nodes"][0]["m_pDefaultVariationData"]["m_variation"].ToString());
+    }
+
+    [Fact]
+    public void ReferencedGraphPaths_WithoutVariation_AreConvertedToAgReferences_AndBack()
+    {
+        const string source = """
+                              <!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+                              {
+                              	_class = "CNmGraphDocument"
+                              	m_nVersion = 0
+                              	m_pRootGraph =
+                              	{
+                              		_class = "CNmGraphDocFlowGraph"
+                              		m_ID = "00000000-0000-0000-0000-000000000001"
+                              		m_nodes =
+                              		[
+                              			{
+                              				_class = "CNmGraphDocReferencedGraphNode"
+                              				m_ID = "00000000-0000-0000-0000-000000000002"
+                              				m_name = "Child Graph"
+                              				m_floatingComment = ""
+                              				m_position = [ 0.0, 0.0 ]
+                              				m_inputPins = [  ]
+                              				m_outputPins = [  ]
+                              				m_pDefaultVariationData =
+                              				{
+                              					_class = "CNmGraphDocReferencedGraphNode::CData"
+                              					m_variation = "animation/graphs/ui/uimodel_walkup.vnmgraph"
+                              				}
+                              				m_overrides = [  ]
+                              				m_defaultResourceName = ""
+                              			},
+                              		]
+                              		m_graphType = "BlendTree"
+                              		m_viewOffset = [ 0.0, 0.0 ]
+                              		m_connections = [  ]
+                              	}
+                              	m_variationHierarchy =
+                              	{
+                              		m_variations = [  ]
+                              	}
+                              }
+                              """;
+
+        var ag = NmGraphAgConverter.ConvertVnmGraphToAg(source);
+        var document = XDocument.Parse(ag);
+
+        var graphDefinitionProperty = document.Descendants("Property")
+            .FirstOrDefault(x => (string?) x.Attribute("ID") == "m_graphDefinition");
+
+        Assert.NotNull(graphDefinitionProperty);
+        Assert.Equal("data://animation/graphs/ui/uimodel_walkup.ag", (string?) graphDefinitionProperty!.Attribute("Value"));
+
+        var roundTripped = NmGraphAgConverter.ConvertAgToVnmGraph(ag);
+        var reparsed = ParseKv3(roundTripped);
+
+        Assert.Equal(
+            "animation/graphs/ui/uimodel_walkup.vnmgraph",
+            reparsed["m_pRootGraph"]["m_nodes"][0]["m_pDefaultVariationData"]["m_variation"].ToString());
+    }
+
+    [Fact]
+    public void TwoBoneIKEffectorBoneName_IsConvertedToEffectorBoneID_AndBack()
+    {
+        const string source = """
+                              <!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+                              {
+                              	_class = "CNmGraphDocument"
+                              	m_nVersion = 0
+                              	m_pRootGraph =
+                              	{
+                              		_class = "CNmGraphDocFlowGraph"
+                              		m_ID = "00000000-0000-0000-0000-000000000001"
+                              		m_nodes =
+                              		[
+                              			{
+                              				_class = "CnmGraphDocTwoBoneIKNode"
+                              				m_ID = "00000000-0000-0000-0000-000000000002"
+                              				m_name = "Two Bone IK"
+                              				m_floatingComment = ""
+                              				m_position = [ 0.0, 0.0 ]
+                              				m_inputPins = [  ]
+                              				m_outputPins = [  ]
+                              				m_pDefaultVariationData =
+                              				{
+                              					_class = "CnmGraphDocTwoBoneIKNode::CData"
+                              					m_effectorBoneName = "hand_r"
+                              					m_flBlendTimeSeconds = 0.0
+                              				}
+                              				m_overrides = [  ]
+                              				m_defaultResourceName = ""
+                              				m_isTargetInWorldSpace = false
+                              			},
+                              		]
+                              		m_graphType = "BlendTree"
+                              		m_viewOffset = [ 0.0, 0.0 ]
+                              		m_connections = [  ]
+                              	}
+                              	m_variationHierarchy =
+                              	{
+                              		m_variations = [  ]
+                              	}
+                              }
+                              """;
+
+        var ag = NmGraphAgConverter.ConvertVnmGraphToAg(source);
+        var document = XDocument.Parse(ag);
+
+        var effectorBoneProperty = document.Descendants("Property")
+            .FirstOrDefault(x => (string?) x.Attribute("ID") == "m_effectorBoneID");
+
+        Assert.NotNull(effectorBoneProperty);
+        Assert.Equal("hand_r", (string?) effectorBoneProperty!.Attribute("Value"));
+
+        var roundTripped = NmGraphAgConverter.ConvertAgToVnmGraph(ag);
+        var reparsed = ParseKv3(roundTripped);
+
+        Assert.Equal(
+            "hand_r",
+            reparsed["m_pRootGraph"]["m_nodes"][0]["m_pDefaultVariationData"]["m_effectorBoneName"].ToString());
+    }
+
+    [Fact]
+    public void FollowBoneNode_IsConvertedToCompatibilityStub_AndBack()
+    {
+        const string source = """
+                              <!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+                              {
+                              	_class = "CNmGraphDocument"
+                              	m_nVersion = 0
+                              	m_pRootGraph =
+                              	{
+                              		_class = "CNmGraphDocFlowGraph"
+                              		m_ID = "00000000-0000-0000-0000-000000000001"
+                              		m_nodes =
+                              		[
+                              			{
+                              				_class = "CnmGraphDocFollowBoneNode"
+                              				m_ID = "00000000-0000-0000-0000-000000000002"
+                              				m_name = "Follow Bone"
+                              				m_floatingComment = ""
+                              				m_position = [ 0.0, 0.0 ]
+                              				m_inputPins = [  ]
+                              				m_outputPins = [  ]
+                              				m_pDefaultVariationData =
+                              				{
+                              					_class = "CnmGraphDocFollowBoneNode::CData"
+                              					m_boneName = "weapon"
+                              					m_followTargetBoneName = "hand_r"
+                              				}
+                              				m_overrides = [  ]
+                              				m_defaultResourceName = ""
+                              				m_mode = "RotationAndTranslation"
+                              			},
+                              		]
+                              		m_graphType = "BlendTree"
+                              		m_viewOffset = [ 0.0, 0.0 ]
+                              		m_connections = [  ]
+                              	}
+                              	m_variationHierarchy =
+                              	{
+                              		m_variations = [  ]
+                              	}
+                              }
+                              """;
+
+        var ag = NmGraphAgConverter.ConvertVnmGraphToAg(source);
+        var document = XDocument.Parse(ag);
+
+        Assert.Contains(document.Descendants("Type"),
+            x => (string?) x.Attribute("TypeID") == "EE::Animation::FollowBoneToolsNode");
+
+        Assert.Contains(document.Descendants("Type"),
+            x => (string?) x.Attribute("TypeID") == "EE::Animation::FollowBoneToolsNode::Data");
+
+        var roundTripped = NmGraphAgConverter.ConvertAgToVnmGraph(ag);
+        var reparsed = ParseKv3(roundTripped);
+
+        Assert.Equal("CnmGraphDocFollowBoneNode", reparsed["m_pRootGraph"]["m_nodes"][0]["_class"].ToString());
+        Assert.Equal("CnmGraphDocFollowBoneNode::CData", reparsed["m_pRootGraph"]["m_nodes"][0]["m_pDefaultVariationData"]["_class"].ToString());
+        Assert.Equal("weapon", reparsed["m_pRootGraph"]["m_nodes"][0]["m_pDefaultVariationData"]["m_boneName"].ToString());
+        Assert.Equal("hand_r", reparsed["m_pRootGraph"]["m_nodes"][0]["m_pDefaultVariationData"]["m_followTargetBoneName"].ToString());
+        Assert.Equal("RotationAndTranslation", reparsed["m_pRootGraph"]["m_nodes"][0]["m_mode"].ToString());
+    }
+
     private static string ResolveSourceDirectory()
     {
         var configuredPath = Environment.GetEnvironmentVariable(SourceDirectoryEnvironmentVariable);

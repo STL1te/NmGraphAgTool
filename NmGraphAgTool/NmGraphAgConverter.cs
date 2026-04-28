@@ -77,6 +77,8 @@ public static class NmGraphAgConverter
         ["CNmGraphDocIDToFloatNode"] = "EE::Animation::IDToFloatToolsNode",
         ["CNmGraphDocStateCompletedConditionNode"] = "EE::Animation::StateCompletedConditionToolsNode",
         ["CNmGraphDocTwoBoneIKNode"] = "EE::Animation::TwoBoneIKToolsNode",
+        ["CnmGraphDocFollowBoneNode"] = "EE::Animation::FollowBoneToolsNode",
+        ["CnmGraphDocFollowBoneNode::CData"] = "EE::Animation::FollowBoneToolsNode::Data",
         ["CnmGraphDocConstBoneTargetNode"] = "EE::Animation::ConstBoneTargetToolsNode",
         ["CNmGraphDocConstBoneTargetNode"] = "EE::Animation::ConstBoneTargetToolsNode",
         ["CNmGraphDocConstTargetNode"] = "EE::Animation::ConstTargetToolsNode",
@@ -97,6 +99,8 @@ public static class NmGraphAgConverter
         ["m_pSecondaryGraph"] = "m_secondaryGraph",
         ["m_pDefaultVariationData"] = "m_defaultVariationData",
         ["m_pData"] = "m_variationData",
+        ["m_variation"] = "m_graphDefinition",
+        ["m_effectorBoneName"] = "m_effectorBoneID",
         ["m_position"] = "m_canvasPosition",
         ["m_graphType"] = "m_type",
         ["m_bIsDynamicPin"] = "m_isDynamic",
@@ -1108,6 +1112,11 @@ public static class NmGraphAgConverter
 
         var normalized = value.Replace('\\', '/');
 
+        if (TryMapValveGraphResourcePathToAg(normalized, propertyName, out var graphResourcePath))
+        {
+            return graphResourcePath;
+        }
+
         if (!normalized.StartsWith("data://", StringComparison.OrdinalIgnoreCase))
         {
             normalized = $"data://{normalized}";
@@ -1130,6 +1139,11 @@ public static class NmGraphAgConverter
         if (!ShouldRemapResourcePath(value, propertyName))
         {
             return value;
+        }
+
+        if (TryMapAgGraphResourcePathToValve(value, propertyName, out var graphResourcePath))
+        {
+            return graphResourcePath;
         }
 
         var normalized = value.StartsWith("data://", StringComparison.OrdinalIgnoreCase)
@@ -1160,11 +1174,123 @@ public static class NmGraphAgConverter
             return true;
         }
 
+        if (propertyName is "m_graphDefinition" or "m_variation")
+        {
+            return true;
+        }
+
         return value.StartsWith("data://", StringComparison.OrdinalIgnoreCase)
             || value.EndsWith(".vnmclip", StringComparison.OrdinalIgnoreCase)
             || value.EndsWith(".vnmskel", StringComparison.OrdinalIgnoreCase)
+            || value.EndsWith(".vnmgraph", StringComparison.OrdinalIgnoreCase)
             || value.EndsWith(".anim", StringComparison.OrdinalIgnoreCase)
-            || value.EndsWith(".skel", StringComparison.OrdinalIgnoreCase);
+            || value.EndsWith(".skel", StringComparison.OrdinalIgnoreCase)
+            || value.EndsWith(".ag", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool TryMapValveGraphResourcePathToAg(string value, string? propertyName, out string mappedValue)
+    {
+        mappedValue = string.Empty;
+
+        if (propertyName is not ("m_graphDefinition" or "m_variation"))
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            mappedValue = value;
+            return true;
+        }
+
+        var plusIdx = value.IndexOf('+', StringComparison.Ordinal);
+        if (plusIdx >= 0)
+        {
+            var baseGraphPath = value[..plusIdx];
+            var variationPath = value[(plusIdx + 1)..];
+            var variationName = Path.GetFileNameWithoutExtension(variationPath);
+
+            if (string.IsNullOrWhiteSpace(variationName))
+            {
+                mappedValue = value;
+                return true;
+            }
+
+            mappedValue = EnsureAgDataPath(baseGraphPath) + "/" + variationName + ".ag";
+            return true;
+        }
+
+        mappedValue = EnsureAgDataPath(value);
+        return true;
+    }
+
+    private static bool TryMapAgGraphResourcePathToValve(string value, string propertyName, out string mappedValue)
+    {
+        mappedValue = string.Empty;
+
+        if (propertyName is not ("m_graphDefinition" or "m_variation"))
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            mappedValue = value;
+            return true;
+        }
+
+        var normalized = value.Replace('\\', '/');
+        if (normalized.StartsWith("data://", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized[7..];
+        }
+
+        var subresourceIdx = normalized.LastIndexOf(".ag/", StringComparison.OrdinalIgnoreCase);
+        if (subresourceIdx >= 0)
+        {
+            var baseGraphPath = normalized[..(subresourceIdx + 3)];
+            var variationPath = normalized[(subresourceIdx + 4)..];
+            var variationName = Path.GetFileNameWithoutExtension(variationPath);
+
+            if (string.IsNullOrWhiteSpace(variationName))
+            {
+                mappedValue = EnsureValveGraphPath(baseGraphPath);
+                return true;
+            }
+
+            mappedValue = EnsureValveGraphPath(baseGraphPath) + "+" + variationName + ".vnmgraph";
+            return true;
+        }
+
+        mappedValue = EnsureValveGraphPath(normalized);
+        return true;
+    }
+
+    private static string EnsureAgDataPath(string path)
+    {
+        var normalized = path.Replace('\\', '/');
+        if (!normalized.StartsWith("data://", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = $"data://{normalized}";
+        }
+
+        if (normalized.EndsWith(".vnmgraph", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized[..^9] + ".ag";
+        }
+
+        return normalized;
+    }
+
+    private static string EnsureValveGraphPath(string path)
+    {
+        var normalized = path.Replace('\\', '/');
+        if (normalized.EndsWith(".ag", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized[..^3] + ".vnmgraph";
+        }
+
+        return normalized;
     }
 
     private static Dictionary<string, string> CreateReverseDictionary(Dictionary<string, string> source)
