@@ -4,7 +4,13 @@
     <RollForward>LatestMajor</RollForward>
     <OutputType>Exe</OutputType>
     <Description>Console tool for converting Valve .vnmgraph animation graph files and Esoterica .ag XML files.</Description>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>NmGraphAgTool.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="ValveKeyValue" Version="0.70.0.499" />
   </ItemGroup>
