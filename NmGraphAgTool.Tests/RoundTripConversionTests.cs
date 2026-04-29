@@ -408,6 +408,165 @@ public sealed class RoundTripConversionTests
         Assert.Equal("RotationAndTranslation", reparsed["m_pRootGraph"]["m_nodes"][0]["m_mode"].ToString());
     }
 
+    [Fact]
+    public void FloatSpringNode_IsConvertedToCompatibilityStub_AndBack()
+    {
+        const string source = """
+                              <!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+                              {
+                              	_class = "CNmGraphDocument"
+                              	m_nVersion = 0
+                              	m_pRootGraph =
+                              	{
+                              		_class = "CNmGraphDocFlowGraph"
+                              		m_ID = "00000000-0000-0000-0000-000000000001"
+                              		m_nodes =
+                              		[
+                              			{
+                              				_class = "CNmGraphDocFloatSpringNode"
+                              				m_ID = "00000000-0000-0000-0000-000000000002"
+                              				m_name = "Float Spring"
+                              				m_floatingComment = ""
+                              				m_position = [ 0.0, 0.0 ]
+                              				m_inputPins = [  ]
+                              				m_outputPins = [  ]
+                              				m_flHertz = 6.5
+                              				m_flDampingRatio = 0.35
+                              				m_bUseStartValue = false
+                              				m_flStartValue = 12.0
+                              			},
+                              		]
+                              		m_graphType = "ValueTree"
+                              		m_viewOffset = [ 0.0, 0.0 ]
+                              		m_connections = [  ]
+                              	}
+                              	m_variationHierarchy =
+                              	{
+                              		m_variations = [  ]
+                              	}
+                              }
+                              """;
+
+        var ag = NmGraphAgConverter.ConvertVnmGraphToAg(source);
+        var document = XDocument.Parse(ag);
+
+        Assert.Contains(document.Descendants("Type"),
+            x => (string?) x.Attribute("TypeID") == "EE::Animation::FloatSpringToolsNode");
+
+        var roundTripped = NmGraphAgConverter.ConvertAgToVnmGraph(ag);
+        var reparsed = ParseKv3(roundTripped);
+
+        Assert.Equal("CNmGraphDocFloatSpringNode", reparsed["m_pRootGraph"]["m_nodes"][0]["_class"].ToString());
+        Assert.Equal("6.5", reparsed["m_pRootGraph"]["m_nodes"][0]["m_flHertz"].ToString());
+        Assert.Equal("0.35", reparsed["m_pRootGraph"]["m_nodes"][0]["m_flDampingRatio"].ToString());
+        Assert.Equal("0", reparsed["m_pRootGraph"]["m_nodes"][0]["m_bUseStartValue"].ToString());
+        Assert.Equal("12", reparsed["m_pRootGraph"]["m_nodes"][0]["m_flStartValue"].ToString());
+    }
+
+    [Fact]
+    public void IDBasedSelectorNode_IsConvertedToCompatibilityStub_AndBack()
+    {
+        const string source = """
+                              <!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+                              {
+                              	_class = "CNmGraphDocument"
+                              	m_nVersion = 0
+                              	m_pRootGraph =
+                              	{
+                              		_class = "CNmGraphDocFlowGraph"
+                              		m_ID = "00000000-0000-0000-0000-000000000001"
+                              		m_nodes =
+                              		[
+                              			{
+                              				_class = "CNmGraphDocIDBasedSelectorNode"
+                              				m_ID = "00000000-0000-0000-0000-000000000002"
+                              				m_name = "ID Selector"
+                              				m_floatingComment = ""
+                              				m_position = [ 0.0, 0.0 ]
+                              				m_inputPins = [  ]
+                              				m_outputPins = [  ]
+                              				m_optionLabels = [ "Idle", "Run" ]
+                              				m_bIgnoreInvalidOptions = true
+                              			},
+                              		]
+                              		m_graphType = "BlendTree"
+                              		m_viewOffset = [ 0.0, 0.0 ]
+                              		m_connections = [  ]
+                              	}
+                              	m_variationHierarchy =
+                              	{
+                              		m_variations = [  ]
+                              	}
+                              }
+                              """;
+
+        var ag = NmGraphAgConverter.ConvertVnmGraphToAg(source);
+        var document = XDocument.Parse(ag);
+
+        Assert.Contains(document.Descendants("Type"),
+            x => (string?) x.Attribute("TypeID") == "EE::Animation::IDBasedSelectorToolsNode");
+
+        var roundTripped = NmGraphAgConverter.ConvertAgToVnmGraph(ag);
+        var reparsed = ParseKv3(roundTripped);
+
+        Assert.Equal("CNmGraphDocIDBasedSelectorNode", reparsed["m_pRootGraph"]["m_nodes"][0]["_class"].ToString());
+        Assert.Equal("Idle", reparsed["m_pRootGraph"]["m_nodes"][0]["m_optionLabels"][0].ToString());
+        Assert.Equal("Run", reparsed["m_pRootGraph"]["m_nodes"][0]["m_optionLabels"][1].ToString());
+        Assert.Equal("1", reparsed["m_pRootGraph"]["m_nodes"][0]["m_bIgnoreInvalidOptions"].ToString());
+    }
+
+    [Fact]
+    public void IDBasedClipSelectorNode_IsConvertedToCompatibilityStub_AndBack()
+    {
+        const string source = """
+                              <!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+                              {
+                              	_class = "CNmGraphDocument"
+                              	m_nVersion = 0
+                              	m_pRootGraph =
+                              	{
+                              		_class = "CNmGraphDocFlowGraph"
+                              		m_ID = "00000000-0000-0000-0000-000000000001"
+                              		m_nodes =
+                              		[
+                              			{
+                              				_class = "CNmGraphDocIDBasedClipSelectorNode"
+                              				m_ID = "00000000-0000-0000-0000-000000000002"
+                              				m_name = "ID Clip Selector"
+                              				m_floatingComment = ""
+                              				m_position = [ 0.0, 0.0 ]
+                              				m_inputPins = [  ]
+                              				m_outputPins = [  ]
+                              				m_optionLabels = [ "Pistol", "Rifle" ]
+                              				m_bIgnoreInvalidOptions = false
+                              			},
+                              		]
+                              		m_graphType = "BlendTree"
+                              		m_viewOffset = [ 0.0, 0.0 ]
+                              		m_connections = [  ]
+                              	}
+                              	m_variationHierarchy =
+                              	{
+                              		m_variations = [  ]
+                              	}
+                              }
+                              """;
+
+        var ag = NmGraphAgConverter.ConvertVnmGraphToAg(source);
+        var document = XDocument.Parse(ag);
+
+        Assert.Contains(document.Descendants("Type"),
+            x => (string?) x.Attribute("TypeID") == "EE::Animation::IDBasedClipSelectorToolsNode");
+
+        var roundTripped = NmGraphAgConverter.ConvertAgToVnmGraph(ag);
+        var reparsed = ParseKv3(roundTripped);
+
+        Assert.Equal("CNmGraphDocIDBasedClipSelectorNode", reparsed["m_pRootGraph"]["m_nodes"][0]["_class"].ToString());
+        Assert.Equal("Pistol", reparsed["m_pRootGraph"]["m_nodes"][0]["m_optionLabels"][0].ToString());
+        Assert.Equal("Rifle", reparsed["m_pRootGraph"]["m_nodes"][0]["m_optionLabels"][1].ToString());
+        Assert.Equal("0", reparsed["m_pRootGraph"]["m_nodes"][0]["m_bIgnoreInvalidOptions"].ToString());
+    }
+
     private static string ResolveSourceDirectory()
     {
         var configuredPath = Environment.GetEnvironmentVariable(SourceDirectoryEnvironmentVariable);
