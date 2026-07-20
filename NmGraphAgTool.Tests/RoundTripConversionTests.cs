@@ -26,7 +26,18 @@ public sealed class RoundTripConversionTests
         foreach (var file in files)
         {
             var original = File.ReadAllText(file);
-            var ag = NmGraphAgConverter.ConvertVnmGraphToAg(original);
+
+            string ag;
+            try
+            {
+                ag = NmGraphAgConverter.ConvertVnmGraphToAg(original);
+            }
+            catch (InvalidDataException)
+            {
+                // Uses a Valve node class with no Esoterica equivalent; nothing to round-trip.
+                continue;
+            }
+
             var roundTripped = NmGraphAgConverter.ConvertAgToVnmGraph(ag);
 
             var normalizedOriginal = NormalizeKv3(original);
@@ -59,7 +70,17 @@ public sealed class RoundTripConversionTests
         foreach (var file in files)
         {
             var source = File.ReadAllText(file);
-            var ag = NmGraphAgConverter.ConvertVnmGraphToAg(source);
+
+            string ag;
+            try
+            {
+                ag = NmGraphAgConverter.ConvertVnmGraphToAg(source);
+            }
+            catch (InvalidDataException)
+            {
+                // Uses a Valve node class with no Esoterica equivalent; nothing to inspect.
+                continue;
+            }
 
             if (ag.Contains("UnknownToolsType", StringComparison.Ordinal))
             {
@@ -742,6 +763,8 @@ public sealed class RoundTripConversionTests
     [InlineData("CNmGraphDocIsInactiveBranchConditionNode")]
     [InlineData("CnmGraphDocChainLookatNode")]
     [InlineData("CNmGraphDocEntryOverrideNode")]
+    [InlineData("CNmGraphDocAimCSNode")]
+    [InlineData("CnmGraphDocSnapWeaponNode")]
     public void UnsupportedValveClasses_ThrowInsteadOfSilentlyProducingInvalidAg(string unsupportedClass)
     {
         var source = $$"""

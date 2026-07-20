@@ -154,6 +154,9 @@ public static class NmGraphAgConverter
         "CNmGraphDocIsInactiveBranchConditionNode",
         "CnmGraphDocChainLookatNode",
         "CNmGraphDocEntryOverrideNode",
+        // CS-specific weapon/viewmodel nodes (schemas/modtools), no engine-level equivalent exists.
+        "CNmGraphDocAimCSNode",
+        "CnmGraphDocSnapWeaponNode",
     ];
 
     private static readonly HashSet<string> IgnoredAgProperties = [];
