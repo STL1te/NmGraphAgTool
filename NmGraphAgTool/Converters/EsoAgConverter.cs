@@ -8,12 +8,13 @@ using System.Xml.Linq;
 using NmGraphAgTool.KV3;
 using ValveKeyValue;
 
-namespace NmGraphAgTool;
+namespace NmGraphAgTool.Converters;
 
 /// <summary>
-/// Converts between Valve animation graph editor KV3 documents and Esoterica graph XML files.
+/// Converts between Valve animation graph editor KV3 (.vnmgraph) documents and Esoterica's
+/// native .ag graph XML format (EE::Animation::*ToolsNode).
 /// </summary>
-public static class NmGraphAgConverter
+public static class EsoAgConverter
 {
     private const string PreservedValveClassCommentPrefix = "VRF:ValveClass:";
     private const string PreservedValvePropertyCommentPrefix = "VRF:ValveProperty:";

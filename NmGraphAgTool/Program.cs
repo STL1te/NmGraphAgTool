@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using NmGraphAgTool.Converters;
 
 namespace NmGraphAgTool;
 
@@ -161,8 +162,8 @@ internal static class Program
         var input = File.ReadAllText(inputPath);
         return mode switch
         {
-            ConversionMode.VnmGraphToAg => NmGraphAgConverter.ConvertVnmGraphToAg(input),
-            ConversionMode.AgToVnmGraph => NmGraphAgConverter.ConvertAgToVnmGraph(input),
+            ConversionMode.VnmGraphToAg => EsoAgConverter.ConvertVnmGraphToAg(input),
+            ConversionMode.AgToVnmGraph => EsoAgConverter.ConvertAgToVnmGraph(input),
             _ => throw new InvalidOperationException($"Unsupported conversion mode: {mode}"),
         };
     }

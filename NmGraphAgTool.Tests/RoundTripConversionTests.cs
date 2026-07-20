@@ -1,6 +1,6 @@
 using System.Text;
 using System.Xml.Linq;
-using NmGraphAgTool;
+using NmGraphAgTool.Converters;
 using ValveKeyValue;
 using Xunit;
 
@@ -30,7 +30,7 @@ public sealed class RoundTripConversionTests
             string ag;
             try
             {
-                ag = NmGraphAgConverter.ConvertVnmGraphToAg(original);
+                ag = EsoAgConverter.ConvertVnmGraphToAg(original);
             }
             catch (InvalidDataException)
             {
@@ -38,7 +38,7 @@ public sealed class RoundTripConversionTests
                 continue;
             }
 
-            var roundTripped = NmGraphAgConverter.ConvertAgToVnmGraph(ag);
+            var roundTripped = EsoAgConverter.ConvertAgToVnmGraph(ag);
 
             var normalizedOriginal = NormalizeKv3(original);
             var normalizedRoundTripped = NormalizeKv3(roundTripped);
@@ -74,7 +74,7 @@ public sealed class RoundTripConversionTests
             string ag;
             try
             {
-                ag = NmGraphAgConverter.ConvertVnmGraphToAg(source);
+                ag = EsoAgConverter.ConvertVnmGraphToAg(source);
             }
             catch (InvalidDataException)
             {
@@ -161,7 +161,7 @@ public sealed class RoundTripConversionTests
                               }
                               """;
 
-        var ag = NmGraphAgConverter.ConvertVnmGraphToAg(source);
+        var ag = EsoAgConverter.ConvertVnmGraphToAg(source);
         var document = XDocument.Parse(ag);
 
         var rangeProperty = document.Descendants("Property")
@@ -229,7 +229,7 @@ public sealed class RoundTripConversionTests
                               }
                               """;
 
-        var ag = NmGraphAgConverter.ConvertVnmGraphToAg(source);
+        var ag = EsoAgConverter.ConvertVnmGraphToAg(source);
         var document = XDocument.Parse(ag);
 
         var graphDefinitionProperty = document.Descendants("Property")
@@ -238,7 +238,7 @@ public sealed class RoundTripConversionTests
         Assert.NotNull(graphDefinitionProperty);
         Assert.Equal("data://animation/graphs/viewmodel/viewmodel_inspects.ag/p90.ag", (string?) graphDefinitionProperty!.Attribute("Value"));
 
-        var roundTripped = NmGraphAgConverter.ConvertAgToVnmGraph(ag);
+        var roundTripped = EsoAgConverter.ConvertAgToVnmGraph(ag);
         var reparsed = ParseKv3(roundTripped);
 
         Assert.Equal(
@@ -288,7 +288,7 @@ public sealed class RoundTripConversionTests
                               }
                               """;
 
-        var ag = NmGraphAgConverter.ConvertVnmGraphToAg(source);
+        var ag = EsoAgConverter.ConvertVnmGraphToAg(source);
         var document = XDocument.Parse(ag);
 
         var graphDefinitionProperty = document.Descendants("Property")
@@ -297,7 +297,7 @@ public sealed class RoundTripConversionTests
         Assert.NotNull(graphDefinitionProperty);
         Assert.Equal("data://animation/graphs/ui/uimodel_walkup.ag", (string?) graphDefinitionProperty!.Attribute("Value"));
 
-        var roundTripped = NmGraphAgConverter.ConvertAgToVnmGraph(ag);
+        var roundTripped = EsoAgConverter.ConvertAgToVnmGraph(ag);
         var reparsed = ParseKv3(roundTripped);
 
         Assert.Equal(
@@ -349,7 +349,7 @@ public sealed class RoundTripConversionTests
                               }
                               """;
 
-        var ag = NmGraphAgConverter.ConvertVnmGraphToAg(source);
+        var ag = EsoAgConverter.ConvertVnmGraphToAg(source);
         var document = XDocument.Parse(ag);
 
         var effectorBoneProperty = document.Descendants("Property")
@@ -358,7 +358,7 @@ public sealed class RoundTripConversionTests
         Assert.NotNull(effectorBoneProperty);
         Assert.Equal("hand_r", (string?) effectorBoneProperty!.Attribute("Value"));
 
-        var roundTripped = NmGraphAgConverter.ConvertAgToVnmGraph(ag);
+        var roundTripped = EsoAgConverter.ConvertAgToVnmGraph(ag);
         var reparsed = ParseKv3(roundTripped);
 
         Assert.Equal(
@@ -410,7 +410,7 @@ public sealed class RoundTripConversionTests
                               }
                               """;
 
-        var ag = NmGraphAgConverter.ConvertVnmGraphToAg(source);
+        var ag = EsoAgConverter.ConvertVnmGraphToAg(source);
         var document = XDocument.Parse(ag);
 
         Assert.Contains(document.Descendants("Type"),
@@ -419,7 +419,7 @@ public sealed class RoundTripConversionTests
         Assert.Contains(document.Descendants("Type"),
             x => (string?) x.Attribute("TypeID") == "EE::Animation::FollowBoneToolsNode::Data");
 
-        var roundTripped = NmGraphAgConverter.ConvertAgToVnmGraph(ag);
+        var roundTripped = EsoAgConverter.ConvertAgToVnmGraph(ag);
         var reparsed = ParseKv3(roundTripped);
 
         Assert.Equal("CnmGraphDocFollowBoneNode", reparsed["m_pRootGraph"]["m_nodes"][0]["_class"].ToString());
@@ -468,13 +468,13 @@ public sealed class RoundTripConversionTests
                               }
                               """;
 
-        var ag = NmGraphAgConverter.ConvertVnmGraphToAg(source);
+        var ag = EsoAgConverter.ConvertVnmGraphToAg(source);
         var document = XDocument.Parse(ag);
 
         Assert.Contains(document.Descendants("Type"),
             x => (string?) x.Attribute("TypeID") == "EE::Animation::FloatSpringToolsNode");
 
-        var roundTripped = NmGraphAgConverter.ConvertAgToVnmGraph(ag);
+        var roundTripped = EsoAgConverter.ConvertAgToVnmGraph(ag);
         var reparsed = ParseKv3(roundTripped);
 
         Assert.Equal("CNmGraphDocFloatSpringNode", reparsed["m_pRootGraph"]["m_nodes"][0]["_class"].ToString());
@@ -521,13 +521,13 @@ public sealed class RoundTripConversionTests
                               }
                               """;
 
-        var ag = NmGraphAgConverter.ConvertVnmGraphToAg(source);
+        var ag = EsoAgConverter.ConvertVnmGraphToAg(source);
         var document = XDocument.Parse(ag);
 
         Assert.Contains(document.Descendants("Type"),
             x => (string?) x.Attribute("TypeID") == "EE::Animation::IDBasedSelectorToolsNode");
 
-        var roundTripped = NmGraphAgConverter.ConvertAgToVnmGraph(ag);
+        var roundTripped = EsoAgConverter.ConvertAgToVnmGraph(ag);
         var reparsed = ParseKv3(roundTripped);
 
         Assert.Equal("CNmGraphDocIDBasedSelectorNode", reparsed["m_pRootGraph"]["m_nodes"][0]["_class"].ToString());
@@ -573,13 +573,13 @@ public sealed class RoundTripConversionTests
                               }
                               """;
 
-        var ag = NmGraphAgConverter.ConvertVnmGraphToAg(source);
+        var ag = EsoAgConverter.ConvertVnmGraphToAg(source);
         var document = XDocument.Parse(ag);
 
         Assert.Contains(document.Descendants("Type"),
             x => (string?) x.Attribute("TypeID") == "EE::Animation::IDBasedClipSelectorToolsNode");
 
-        var roundTripped = NmGraphAgConverter.ConvertAgToVnmGraph(ag);
+        var roundTripped = EsoAgConverter.ConvertAgToVnmGraph(ag);
         var reparsed = ParseKv3(roundTripped);
 
         Assert.Equal("CNmGraphDocIDBasedClipSelectorNode", reparsed["m_pRootGraph"]["m_nodes"][0]["_class"].ToString());
@@ -624,7 +624,7 @@ public sealed class RoundTripConversionTests
                               }
                               """;
 
-        var ag = NmGraphAgConverter.ConvertVnmGraphToAg(source);
+        var ag = EsoAgConverter.ConvertVnmGraphToAg(source);
         var document = XDocument.Parse(ag);
 
         var commentType = document.Descendants("Type")
@@ -638,7 +638,7 @@ public sealed class RoundTripConversionTests
         Assert.Equal("FF4C4C4C",
             (string?) commentType.Elements("Property").FirstOrDefault(x => (string?) x.Attribute("ID") == "m_nodeColor")?.Attribute("Value"));
 
-        var roundTripped = NmGraphAgConverter.ConvertAgToVnmGraph(ag);
+        var roundTripped = EsoAgConverter.ConvertAgToVnmGraph(ag);
         var reparsed = ParseKv3(roundTripped);
         var node = reparsed["m_pRootGraph"]["m_nodes"][0];
 
@@ -688,13 +688,13 @@ public sealed class RoundTripConversionTests
                               }
                               """;
 
-        var ag = NmGraphAgConverter.ConvertVnmGraphToAg(source);
+        var ag = EsoAgConverter.ConvertVnmGraphToAg(source);
         var document = XDocument.Parse(ag);
 
         Assert.Contains(document.Descendants("Type"),
             x => (string?) x.Attribute("TypeID") == "EE::Animation::ExternalReferencedGraphToolsNode");
 
-        var roundTripped = NmGraphAgConverter.ConvertAgToVnmGraph(ag);
+        var roundTripped = EsoAgConverter.ConvertAgToVnmGraph(ag);
         var reparsed = ParseKv3(roundTripped);
 
         Assert.Equal("CNmGraphDocExternalGraphNode", reparsed["m_pRootGraph"]["m_nodes"][0]["_class"].ToString());
@@ -742,7 +742,7 @@ public sealed class RoundTripConversionTests
                               }
                               """;
 
-        var ag = NmGraphAgConverter.ConvertVnmGraphToAg(source);
+        var ag = EsoAgConverter.ConvertVnmGraphToAg(source);
         var document = XDocument.Parse(ag);
 
         Assert.Contains(document.Descendants("Type"),
@@ -750,7 +750,7 @@ public sealed class RoundTripConversionTests
         Assert.Contains(document.Descendants("Type"),
             x => (string?) x.Attribute("TypeID") == "EE::Animation::VariationFloatToolsNode::Data");
 
-        var roundTripped = NmGraphAgConverter.ConvertAgToVnmGraph(ag);
+        var roundTripped = EsoAgConverter.ConvertAgToVnmGraph(ag);
         var reparsed = ParseKv3(roundTripped);
         var node = reparsed["m_pRootGraph"]["m_nodes"][0];
 
@@ -799,7 +799,7 @@ public sealed class RoundTripConversionTests
                        }
                        """;
 
-        var exception = Assert.Throws<InvalidDataException>(() => NmGraphAgConverter.ConvertVnmGraphToAg(source));
+        var exception = Assert.Throws<InvalidDataException>(() => EsoAgConverter.ConvertVnmGraphToAg(source));
         Assert.Contains(unsupportedClass, exception.Message, StringComparison.Ordinal);
     }
 
