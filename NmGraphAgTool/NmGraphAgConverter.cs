@@ -65,7 +65,6 @@ public static class NmGraphAgConverter
         ["CNmGraphDocIDParameterReferenceNode"] = "EE::Animation::IDParameterReferenceToolsNode",
         ["CNmGraphDocVectorParameterReferenceNode"] = "EE::Animation::VectorParameterReferenceToolsNode",
         ["CNmGraphDocTargetParameterReferenceNode"] = "EE::Animation::TargetParameterReferenceToolsNode",
-        ["CNmGraphDocBoolComparisonNode"] = "EE::Animation::BoolComparisonToolsNode",
         ["CNmGraphDocFloatComparisonNode"] = "EE::Animation::FloatComparisonToolsNode",
         ["CNmGraphDocFloatRangeComparisonNode"] = "EE::Animation::FloatRangeComparisonToolsNode",
         ["CNmGraphDocFloatSpringNode"] = "EE::Animation::FloatSpringToolsNode",
@@ -79,18 +78,22 @@ public static class NmGraphAgConverter
         ["CNmGraphDocGraphEventConditionNode"] = "EE::Animation::GraphEventConditionToolsNode",
         ["CNmGraphDocIDToFloatNode"] = "EE::Animation::IDToFloatToolsNode",
         ["CNmGraphDocStateCompletedConditionNode"] = "EE::Animation::StateCompletedConditionToolsNode",
-        ["CNmGraphDocTwoBoneIKNode"] = "EE::Animation::TwoBoneIKToolsNode",
+        ["CnmGraphDocTwoBoneIKNode"] = "EE::Animation::TwoBoneIKToolsNode",
         ["CnmGraphDocFollowBoneNode"] = "EE::Animation::FollowBoneToolsNode",
         ["CnmGraphDocFollowBoneNode::CData"] = "EE::Animation::FollowBoneToolsNode::Data",
         ["CnmGraphDocConstBoneTargetNode"] = "EE::Animation::ConstBoneTargetToolsNode",
-        ["CNmGraphDocConstBoneTargetNode"] = "EE::Animation::ConstBoneTargetToolsNode",
         ["CNmGraphDocConstTargetNode"] = "EE::Animation::ConstTargetToolsNode",
         ["CNmGraphDocBoneMaskNode"] = "EE::Animation::BoneMaskToolsNode",
         ["CnmGraphDocConstFloatNode"] = "EE::Animation::ConstFloatToolsNode",
         ["CNmGraphDocCachedFloatNode"] = "EE::Animation::CachedFloatToolsNode",
         ["CnmGraphDocDurationScaleNode"] = "EE::Animation::DurationScaleToolsNode",
         ["CNmGraphDocLayerBlendNode"] = "EE::Animation::LayerBlendToolsNode",
-        ["CNmGraphDocReferencedGraphNode"] = "EE::Animation::ReferencedGraphToolsNode",
+        ["CNmGraphDocReferencedGraphNode"] = "EE::Animation::InternalReferencedGraphToolsNode",
+        ["CNmGraphDocReferencedGraphNode::CData"] = "EE::Animation::InternalReferencedGraphToolsNode::Data",
+        ["CNmGraphDocExternalGraphNode"] = "EE::Animation::ExternalReferencedGraphToolsNode",
+        ["CnmGraphDocVariationConstFloatNode"] = "EE::Animation::VariationFloatToolsNode",
+        ["CnmGraphDocVariationConstFloatNode::CData"] = "EE::Animation::VariationFloatToolsNode::Data",
+        ["CNmGraphDocCommentNode"] = "EE::NodeGraph::CommentNode",
     };
 
     private static readonly Dictionary<string, string> AgToValveClassMap = CreateReverseDictionary(ValveToAgClassMap);
@@ -124,6 +127,7 @@ public static class NmGraphAgConverter
         ["m_bIgnoreInactiveBranchEvents"] = "m_ignoreInactiveBranchEvents",
         ["m_bSwitchDynamically"] = "m_switchDynamically",
         ["m_flBlendTimeSeconds"] = "m_blendTime",
+        ["m_size"] = "m_commentBoxSize",
     };
 
     private static readonly Dictionary<string, string> AgToValvePropertyMap = CreateAgToValvePropertyMap();
@@ -144,7 +148,13 @@ public static class NmGraphAgConverter
         "m_graphEvents",
     ];
 
-    private static readonly HashSet<string> UnsupportedValveClasses = [];
+    private static readonly HashSet<string> UnsupportedValveClasses =
+    [
+        // CS2-specific additions with no equivalent ToolsNode in this Esoterica branch.
+        "CNmGraphDocIsInactiveBranchConditionNode",
+        "CnmGraphDocChainLookatNode",
+        "CNmGraphDocEntryOverrideNode",
+    ];
 
     private static readonly HashSet<string> IgnoredAgProperties = [];
 
@@ -460,6 +470,17 @@ public static class NmGraphAgConverter
                 continue;
             }
 
+            if (property.Key == "m_comment" && typeId == "EE::NodeGraph::CommentNode")
+            {
+                var commentElement = ConvertValvePropertyToAg("m_name", property.Value);
+                if (commentElement is not null)
+                {
+                    type.Add(commentElement);
+                }
+
+                continue;
+            }
+
             var childElement = ConvertValvePropertyToAg(property.Key, property.Value);
             if (childElement is not null)
             {
@@ -629,6 +650,10 @@ public static class NmGraphAgConverter
             {
                 objectValue["m_graphType"] = converted.Value.Value;
             }
+            else if (typeId == "EE::NodeGraph::CommentNode" && converted.Value.Key == "m_name")
+            {
+                objectValue["m_comment"] = converted.Value.Value;
+            }
             else
             {
                 objectValue[converted.Value.Key] = converted.Value.Value;
@@ -717,6 +742,11 @@ public static class NmGraphAgConverter
             return true;
         }
 
+        if (originalPropertyName == "m_nodeColor" && TryConvertValveColorToAgProperty(mappedPropertyName, value, out scalarElement))
+        {
+            return true;
+        }
+
         if (value.ValueType is KVValueType.Collection or KVValueType.Array or KVValueType.Null)
         {
             return false;
@@ -771,6 +801,42 @@ public static class NmGraphAgConverter
         return true;
     }
 
+    private static bool TryConvertValveColorToAgProperty(string mappedPropertyName, KVObject value, out XElement scalarElement)
+    {
+        scalarElement = null!;
+
+        if (!TryReadPrimitiveArray(value, out var components) || components.Count != 4)
+        {
+            return false;
+        }
+
+        static byte ToByteComponent(KVObject component)
+            => (byte)Math.Clamp((int)double.Parse(component.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture), 0, 255);
+
+        var a = ToByteComponent(components[0]);
+        var r = ToByteComponent(components[1]);
+        var g = ToByteComponent(components[2]);
+        var b = ToByteComponent(components[3]);
+
+        scalarElement = CreateAgProperty(mappedPropertyName, $"{a:X2}{b:X2}{g:X2}{r:X2}");
+        return true;
+    }
+
+    private static KVObject ParseValveColor(string value)
+    {
+        if (value.Length != 8 || !uint.TryParse(value, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out _))
+        {
+            return ParseAgScalar(value);
+        }
+
+        var a = Convert.ToByte(value[..2], 16);
+        var b = Convert.ToByte(value[2..4], 16);
+        var g = Convert.ToByte(value[4..6], 16);
+        var r = Convert.ToByte(value[6..8], 16);
+
+        return KVObject.Array([(long)a, (long)r, (long)g, (long)b]);
+    }
+
     private static XElement CreateAgProperty(string propertyName, string value)
         => new("Property",
             new XAttribute("ID", propertyName),
@@ -802,7 +868,7 @@ public static class NmGraphAgConverter
     }
 
     private static bool IsFloat2Property(string propertyName)
-        => propertyName is "m_position" or "m_viewOffset" or "m_canvasPosition";
+        => propertyName is "m_position" or "m_viewOffset" or "m_canvasPosition" or "m_size" or "m_commentBoxSize";
 
     private static bool IsFloatRangeProperty(string propertyName)
         => propertyName is "m_inputTimeRemapRange" or "m_clampRange" or "m_range";
@@ -837,6 +903,11 @@ public static class NmGraphAgConverter
         if (propertyName == "m_curve")
         {
             return ParseValveFloatCurve(value);
+        }
+
+        if (propertyName == "m_nodeColor")
+        {
+            return ParseValveColor(value);
         }
 
         if (propertyName == "m_type")
@@ -1025,8 +1096,10 @@ public static class NmGraphAgConverter
         => tangentMode == "0" ? "CURVE_TANGENT_FREE" : "CURVE_TANGENT_SPLINE";
 
     private static bool ShouldPreserveValvePropertyAsCommentOnly(string? originalClassName, string propertyName)
-        => string.Equals(originalClassName, "CNmGraphDocBoneMaskNode", StringComparison.Ordinal)
-            && propertyName is "m_pDefaultVariationData" or "m_overrides" or "m_defaultResourceName";
+        => (string.Equals(originalClassName, "CNmGraphDocBoneMaskNode", StringComparison.Ordinal)
+                && propertyName is "m_pDefaultVariationData" or "m_overrides" or "m_defaultResourceName")
+            || (string.Equals(originalClassName, "CNmGraphDocCommentNode", StringComparison.Ordinal)
+                && propertyName == "m_name");
 
     private static bool ShouldPreserveOriginalValvePropertyValue(string propertyName)
         => propertyName == "m_curve";

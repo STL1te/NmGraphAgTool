@@ -567,6 +567,219 @@ public sealed class RoundTripConversionTests
         Assert.Equal("0", reparsed["m_pRootGraph"]["m_nodes"][0]["m_bIgnoreInvalidOptions"].ToString());
     }
 
+    [Fact]
+    public void CommentNode_TextSizeAndColor_AreConvertedToEsotericaCommentNode_AndBack()
+    {
+        const string source = """
+                              <!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+                              {
+                              	_class = "CNmGraphDocument"
+                              	m_nVersion = 0
+                              	m_pRootGraph =
+                              	{
+                              		_class = "CNmGraphDocFlowGraph"
+                              		m_ID = "00000000-0000-0000-0000-000000000001"
+                              		m_nodes =
+                              		[
+                              			{
+                              				_class = "CNmGraphDocCommentNode"
+                              				m_ID = "00000000-0000-0000-0000-000000000002"
+                              				m_name = ""
+                              				m_floatingComment = ""
+                              				m_position = [ 0.0, 0.0 ]
+                              				m_size = [ 100.0, 100.0 ]
+                              				m_comment = "TODO: rework this blend"
+                              				m_nodeColor = [ 255, 76, 76, 76 ]
+                              			},
+                              		]
+                              		m_graphType = "BlendTree"
+                              		m_viewOffset = [ 0.0, 0.0 ]
+                              		m_connections = [  ]
+                              	}
+                              	m_variationHierarchy =
+                              	{
+                              		m_variations = [  ]
+                              	}
+                              }
+                              """;
+
+        var ag = NmGraphAgConverter.ConvertVnmGraphToAg(source);
+        var document = XDocument.Parse(ag);
+
+        var commentType = document.Descendants("Type")
+            .FirstOrDefault(x => (string?) x.Attribute("TypeID") == "EE::NodeGraph::CommentNode");
+
+        Assert.NotNull(commentType);
+        Assert.Equal("TODO: rework this blend",
+            (string?) commentType!.Elements("Property").FirstOrDefault(x => (string?) x.Attribute("ID") == "m_name")?.Attribute("Value"));
+        Assert.Equal("100.0,100.0",
+            (string?) commentType.Elements("Property").FirstOrDefault(x => (string?) x.Attribute("ID") == "m_commentBoxSize")?.Attribute("Value"));
+        Assert.Equal("FF4C4C4C",
+            (string?) commentType.Elements("Property").FirstOrDefault(x => (string?) x.Attribute("ID") == "m_nodeColor")?.Attribute("Value"));
+
+        var roundTripped = NmGraphAgConverter.ConvertAgToVnmGraph(ag);
+        var reparsed = ParseKv3(roundTripped);
+        var node = reparsed["m_pRootGraph"]["m_nodes"][0];
+
+        Assert.Equal("CNmGraphDocCommentNode", node["_class"].ToString());
+        Assert.Equal("", node["m_name"].ToString());
+        Assert.Equal("TODO: rework this blend", node["m_comment"].ToString());
+        Assert.Equal("100", node["m_size"][0].ToString());
+        Assert.Equal("100", node["m_size"][1].ToString());
+        Assert.Equal("255", node["m_nodeColor"][0].ToString());
+        Assert.Equal("76", node["m_nodeColor"][1].ToString());
+        Assert.Equal("76", node["m_nodeColor"][2].ToString());
+        Assert.Equal("76", node["m_nodeColor"][3].ToString());
+    }
+
+    [Fact]
+    public void ExternalGraphNode_IsConvertedToExternalReferencedGraphToolsNode_AndBack()
+    {
+        const string source = """
+                              <!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+                              {
+                              	_class = "CNmGraphDocument"
+                              	m_nVersion = 0
+                              	m_pRootGraph =
+                              	{
+                              		_class = "CNmGraphDocFlowGraph"
+                              		m_ID = "00000000-0000-0000-0000-000000000001"
+                              		m_nodes =
+                              		[
+                              			{
+                              				_class = "CNmGraphDocExternalGraphNode"
+                              				m_ID = "00000000-0000-0000-0000-000000000002"
+                              				m_name = "External Graph"
+                              				m_floatingComment = ""
+                              				m_position = [ 0.0, 0.0 ]
+                              				m_inputPins = [  ]
+                              				m_outputPins = [  ]
+                              			},
+                              		]
+                              		m_graphType = "BlendTree"
+                              		m_viewOffset = [ 0.0, 0.0 ]
+                              		m_connections = [  ]
+                              	}
+                              	m_variationHierarchy =
+                              	{
+                              		m_variations = [  ]
+                              	}
+                              }
+                              """;
+
+        var ag = NmGraphAgConverter.ConvertVnmGraphToAg(source);
+        var document = XDocument.Parse(ag);
+
+        Assert.Contains(document.Descendants("Type"),
+            x => (string?) x.Attribute("TypeID") == "EE::Animation::ExternalReferencedGraphToolsNode");
+
+        var roundTripped = NmGraphAgConverter.ConvertAgToVnmGraph(ag);
+        var reparsed = ParseKv3(roundTripped);
+
+        Assert.Equal("CNmGraphDocExternalGraphNode", reparsed["m_pRootGraph"]["m_nodes"][0]["_class"].ToString());
+    }
+
+    [Fact]
+    public void VariationConstFloatNode_IsConvertedToVariationFloatToolsNode_AndBack()
+    {
+        const string source = """
+                              <!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+                              {
+                              	_class = "CNmGraphDocument"
+                              	m_nVersion = 0
+                              	m_pRootGraph =
+                              	{
+                              		_class = "CNmGraphDocFlowGraph"
+                              		m_ID = "00000000-0000-0000-0000-000000000001"
+                              		m_nodes =
+                              		[
+                              			{
+                              				_class = "CnmGraphDocVariationConstFloatNode"
+                              				m_ID = "00000000-0000-0000-0000-000000000002"
+                              				m_name = "Variation Float"
+                              				m_floatingComment = ""
+                              				m_position = [ 0.0, 0.0 ]
+                              				m_inputPins = [  ]
+                              				m_outputPins = [  ]
+                              				m_pDefaultVariationData =
+                              				{
+                              					_class = "CnmGraphDocVariationConstFloatNode::CData"
+                              					m_flValue = 3.5
+                              				}
+                              				m_overrides = [  ]
+                              				m_defaultResourceName = ""
+                              			},
+                              		]
+                              		m_graphType = "BlendTree"
+                              		m_viewOffset = [ 0.0, 0.0 ]
+                              		m_connections = [  ]
+                              	}
+                              	m_variationHierarchy =
+                              	{
+                              		m_variations = [  ]
+                              	}
+                              }
+                              """;
+
+        var ag = NmGraphAgConverter.ConvertVnmGraphToAg(source);
+        var document = XDocument.Parse(ag);
+
+        Assert.Contains(document.Descendants("Type"),
+            x => (string?) x.Attribute("TypeID") == "EE::Animation::VariationFloatToolsNode");
+        Assert.Contains(document.Descendants("Type"),
+            x => (string?) x.Attribute("TypeID") == "EE::Animation::VariationFloatToolsNode::Data");
+
+        var roundTripped = NmGraphAgConverter.ConvertAgToVnmGraph(ag);
+        var reparsed = ParseKv3(roundTripped);
+        var node = reparsed["m_pRootGraph"]["m_nodes"][0];
+
+        Assert.Equal("CnmGraphDocVariationConstFloatNode", node["_class"].ToString());
+        Assert.Equal("CnmGraphDocVariationConstFloatNode::CData", node["m_pDefaultVariationData"]["_class"].ToString());
+        Assert.Equal("3.5", node["m_pDefaultVariationData"]["m_flValue"].ToString());
+    }
+
+    [Theory]
+    [InlineData("CNmGraphDocIsInactiveBranchConditionNode")]
+    [InlineData("CnmGraphDocChainLookatNode")]
+    [InlineData("CNmGraphDocEntryOverrideNode")]
+    public void UnsupportedValveClasses_ThrowInsteadOfSilentlyProducingInvalidAg(string unsupportedClass)
+    {
+        var source = $$"""
+                       <!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:generic:version{7412167c-06e9-4698-aff2-e63eb59037e7} -->
+                       {
+                       	_class = "CNmGraphDocument"
+                       	m_nVersion = 0
+                       	m_pRootGraph =
+                       	{
+                       		_class = "CNmGraphDocFlowGraph"
+                       		m_ID = "00000000-0000-0000-0000-000000000001"
+                       		m_nodes =
+                       		[
+                       			{
+                       				_class = "{{unsupportedClass}}"
+                       				m_ID = "00000000-0000-0000-0000-000000000002"
+                       				m_name = ""
+                       				m_floatingComment = ""
+                       				m_position = [ 0.0, 0.0 ]
+                       				m_inputPins = [  ]
+                       				m_outputPins = [  ]
+                       			},
+                       		]
+                       		m_graphType = "BlendTree"
+                       		m_viewOffset = [ 0.0, 0.0 ]
+                       		m_connections = [  ]
+                       	}
+                       	m_variationHierarchy =
+                       	{
+                       		m_variations = [  ]
+                       	}
+                       }
+                       """;
+
+        var exception = Assert.Throws<InvalidDataException>(() => NmGraphAgConverter.ConvertVnmGraphToAg(source));
+        Assert.Contains(unsupportedClass, exception.Message, StringComparison.Ordinal);
+    }
+
     private static string ResolveSourceDirectory()
     {
         var configuredPath = Environment.GetEnvironmentVariable(SourceDirectoryEnvironmentVariable);
